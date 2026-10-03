@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, Square, Activity, AlertCircle, RefreshCw } from "lucide-react";
+import { Mic, Square, Activity, AlertCircle, RefreshCw, ServerOff, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { analyzeAudio, AnalysisResponse } from "@/lib/api";
+import { analyzeAudio, AnalysisResponse, getModelInfo } from "@/lib/api";
 import { PredictionCard } from "./PredictionCard";
 
 export function LiveAudio() {
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const [resultsHistory, setResultsHistory] = useState<AnalysisResponse[]>([]);
   const [audioLevel, setAudioLevel] = useState<number>(0);
   
@@ -22,6 +23,21 @@ export function LiveAudio() {
 
   const CHUNK_DURATION_MS = 4000;
 
+  // Check backend health on mount and periodically
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        await getModelInfo();
+        setBackendOnline(true);
+      } catch (err) {
+        setBackendOnline(false);
+      }
+    };
+    checkBackend();
+    const interval = setInterval(checkBackend, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   const analyzeChunk = async (audioBlob: Blob) => {
     if (audioBlob.size < 1000) return;
     setIsAnalyzing(true);
@@ -30,8 +46,11 @@ export function LiveAudio() {
       const res = await analyzeAudio(file);
       setResultsHistory(prev => [res, ...prev].slice(0, 6));
       setError(null);
+      setBackendOnline(true);
     } catch (err: any) {
       console.error("Error analyzing live chunk:", err);
+      setBackendOnline(false);
+      setError("Cannot connect to backend server at http://localhost:8000. Please make sure the Python backend is running.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -76,7 +95,7 @@ export function LiveAudio() {
       }, CHUNK_DURATION_MS);
     } catch (e: any) {
       console.error("Failed to start recorder segment:", e);
-      setError("Failed to record audio stream.");
+      setError("Failed to record audio segment.");
     }
   }, []);
 
@@ -84,7 +103,7 @@ export function LiveAudio() {
     try {
       setError(null);
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setError("Microphone not supported on this browser.");
+        setError("Microphone is not supported on this browser.");
         return;
       }
 
@@ -171,13 +190,43 @@ export function LiveAudio() {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
-      <div className="glass-panel p-8 rounded-xl text-center border-white/10">
+      <div className="glass-panel p-8 rounded-xl text-center border-white/10 relative">
+        {/* Backend Status Badge */}
+        <div className="flex justify-center items-center gap-2 mb-4">
+          <span className="text-xs text-muted-foreground">Backend Status:</span>
+          {backendOnline === true && (
+            <span className="inline-flex items-center text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Online (FastAPI + PyTorch)
+            </span>
+          )}
+          {backendOnline === false && (
+            <span className="inline-flex items-center text-xs font-medium text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full border border-rose-500/20">
+              <ServerOff className="h-3.5 w-3.5 mr-1" /> Offline (Port 8000 Not Running)
+            </span>
+          )}
+        </div>
+
         <h2 className="text-2xl font-bold mb-3">Live Microphone Deepfake Analysis</h2>
         <p className="text-muted-foreground mb-6 text-sm max-w-2xl mx-auto">
           Stream real-time voice directly to the PyTorch Convolutional Neural Network. Audio is evaluated in 4-second continuous sliding windows for deepfake artifacts.
         </p>
 
-        {error && (
+        {backendOnline === false && (
+          <div className="mb-6 p-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm text-left max-w-lg mx-auto">
+            <div className="flex items-center font-semibold mb-1">
+              <AlertCircle className="h-4 w-4 mr-2" /> Backend Server Offline
+            </div>
+            <p className="text-xs text-rose-200/80 mb-2">
+              Start the backend server in a separate terminal:
+            </p>
+            <code className="block bg-black/50 p-2 rounded text-xs font-mono text-white">
+              cd voiceguard-ai\backend<br />
+              &amp; "venv\Scripts\python.exe" main.py
+            </code>
+          </div>
+        )}
+
+        {error && backendOnline !== false && (
           <div className="flex items-center justify-center text-destructive mb-6 space-x-2 bg-destructive/10 p-3 rounded-lg w-fit mx-auto text-sm">
             <AlertCircle className="h-5 w-5" />
             <span>{error}</span>
