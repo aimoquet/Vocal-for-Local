@@ -22,7 +22,7 @@ export function AudioUploader({ onAnalyze, isLoading }: AudioUploaderProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'audio/*': ['.wav', '.mp3', '.flac', '.m4a']
+      'audio/*': ['.wav', '.mp3', '.flac', '.m4a', '.webm', '.ogg', '.opus', '.aac']
     },
     maxFiles: 1,
     maxSize: 26214400, // 25MB
