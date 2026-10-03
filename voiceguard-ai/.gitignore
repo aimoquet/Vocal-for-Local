@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Python Virtual Environments
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Datasets & Large Audio files
+dataset/
+*.wav
+*.mp3
+*.flac
+*.webm
+
+# Next.js Build Output
+.next/
+out/
+build/
+dist/
+
+# Databases & Logs
+*.db
+*.sqlite3
+*.log
+
+# Environment
+.env
+.env.local
+.DS_Store
+Thumbs.db
