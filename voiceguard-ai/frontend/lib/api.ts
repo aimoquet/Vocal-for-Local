@@ -1,9 +1,11 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+// Use same-origin proxy '/api' by default, or fallback to explicit URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000,
 });
 
 export interface AnalysisResponse {
