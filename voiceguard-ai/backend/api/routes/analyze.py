@@ -16,8 +16,17 @@ async def analyze_audio(file: UploadFile = File(...)):
     if file_size > MAX_SIZE:
         raise HTTPException(status_code=400, detail="File too large")
         
-    allowed_types = ["audio/wav", "audio/mpeg", "audio/flac", "audio/mp4", "audio/x-m4a", "audio/webm", "video/webm"]
-    if file.content_type not in allowed_types:
+    content_type = (file.content_type or "").lower().split(';')[0].strip()
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    allowed_exts = [".wav", ".mp3", ".flac", ".m4a", ".webm", ".ogg", ".opus", ".aac", ".mp4"]
+    
+    is_valid_type = (
+        content_type.startswith("audio/") or 
+        content_type.startswith("video/webm") or 
+        content_type in ["application/octet-stream", ""] or 
+        ext in allowed_exts
+    )
+    if not is_valid_type:
         raise HTTPException(status_code=400, detail=f"Unsupported file format: {file.content_type}")
 
     demo_mode = os.getenv("DEMO_MODE", "true").lower() == "true"
